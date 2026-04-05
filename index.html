@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffd6e8" />
+  <title>¿Una invitación especial?</title>
+  <style>
+    :root {
+      --pink: #ff8fb8;
+      --pink-deep: #e85a8c;
+      --cream: #fff5f8;
+      --shell: #f4e4c8;
+      --shell-dark: #d4b896;
+      --text: #4a3040;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(160deg, #ffe8f0 0%, #ffd6e8 45%, #e8d4ff 100%);
+      min-height: 100dvh;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    .screen {
+      display: none;
+      min-height: 100dvh;
+      padding: 1.25rem;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .screen.active { display: flex; }
+    h1 {
+      font-size: clamp(1.35rem, 5vw, 1.75rem);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+    p.lead {
+      font-size: 1rem;
+      opacity: 0.9;
+      max-width: 22rem;
+      margin-bottom: 1.5rem;
+    }
+    /* Frase mientras se rompe el huevo */
+    .leyenda {
+      max-width: 22rem;
+      margin: 0 auto 1rem;
+      padding: 1rem 1.15rem;
+      background: rgba(255, 255, 255, 0.82);
+      border-radius: 1rem;
+      box-shadow: 0 6px 20px rgba(200, 100, 140, 0.18);
+      font-size: clamp(0.92rem, 3.2vw, 1.05rem);
+      line-height: 1.55;
+      text-align: center;
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .leyenda.fade-out {
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+    }
+    /* --- Juego: cascarón --- */
+    .game-area {
+      position: relative;
+      width: min(300px, 90vw);
+      height: min(400px, 88vw);
+      margin: 1rem 0;
+    }
+    .egg-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .egg-wrap.hidden { pointer-events: none; opacity: 0; transition: opacity 0.5s; }
+    .egg {
+      width: 140px;
+      height: 190px;
+      background: linear-gradient(95deg, var(--shell) 0%, #fff8ee 50%, var(--shell-dark) 100%);
+      border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+      box-shadow:
+        inset -8px -12px 20px rgba(0,0,0,0.12),
+        0 12px 28px rgba(180, 120, 140, 0.35);
+      position: relative;
+      transition: transform 0.08s ease;
+    }
+    .egg::before {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 48%;
+      height: 3px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 2px;
+    }
+    .egg.shake { animation: shake 0.4s ease infinite; }
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg) translateX(0); }
+      25% { transform: rotate(-4deg) translateX(-3px); }
+      75% { transform: rotate(4deg) translateX(3px); }
+    }
+    .crack-layer {
+      position: absolute;
+      width: 140px;
+      height: 190px;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .crack-layer.show { opacity: 1; }
+    .crack-layer svg { width: 100%; height: 100%; }
+    .hint {
+      font-size: 0.9rem;
+      color: var(--pink-deep);
+      margin-top: 0.5rem;
+      animation: pulse 1.5s ease infinite;
+    }
+    @keyframes pulse { 50% { opacity: 0.55; } }
+    /* Dragones */
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .scene.visible { opacity: 1; transition: opacity 0.6s; }
+    .baby-dragon {
+      width: min(200px, 55vw);
+      height: min(220px, 60vw);
+      transform: scale(0);
+      transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .baby-dragon.hatch { transform: scale(1); }
+    .baby-dragon .dragon-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 8px 16px rgba(200, 100, 140, 0.35));
+    }
+    .mini {
+      position: absolute;
+      width: 56px;
+      height: 62px;
+      bottom: 12%;
+      opacity: 0;
+      transition: opacity 0.5s, transform 0.8s ease;
+    }
+    .mini.left { left: 2%; transform: translateX(-20px); }
+    .mini.right { right: 2%; transform: translateX(20px); }
+    .mini.arrive { opacity: 1; transform: translateX(0); }
+    .kiss {
+      position: absolute;
+      bottom: 58%;
+      font-size: 2rem;
+      opacity: 0;
+      animation: none;
+    }
+    .kiss.show {
+      opacity: 1;
+      animation: floatHeart 1.2s ease forwards;
+    }
+    @keyframes floatHeart {
+      0% { transform: translateY(0) scale(0.5); opacity: 0; }
+      40% { opacity: 1; transform: translateY(-12px) scale(1.1); }
+      100% { transform: translateY(-28px) scale(1); opacity: 0; }
+    }
+    .post-hatch-msg {
+      max-width: 20rem;
+      margin-top: 0.75rem;
+      padding: 0.85rem 1rem;
+      background: rgba(255, 255, 255, 0.78);
+      border-radius: 1rem;
+      font-size: 0.98rem;
+      line-height: 1.45;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.7s, transform 0.7s;
+    }
+    .post-hatch-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .btn-main {
+      margin-top: 1.25rem;
+      padding: 0.85rem 1.5rem;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--pink), var(--pink-deep));
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(232, 90, 140, 0.45);
+      opacity: 0;
+      transition: opacity 0.6s, transform 0.15s;
+    }
+    .btn-main.show { opacity: 1; }
+    .btn-main:active { transform: scale(0.97); }
+    /* Invitación */
+    .card {
+      background: #fff;
+      border-radius: 1.25rem;
+      padding: 1.75rem 1.5rem;
+      max-width: 22rem;
+      box-shadow: 0 12px 40px rgba(180, 100, 130, 0.25);
+      text-align: left;
+    }
+    .card h2 {
+      font-size: 1.35rem;
+      color: var(--pink-deep);
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+    .card p { margin-bottom: 0.6rem; font-size: 0.98rem; line-height: 1.5; }
+    .card .detail { font-weight: 600; color: #6b4155; }
+    .invite-video-wrap {
+      width: 100%;
+      max-width: min(100%, 420px);
+      margin: 0 auto 1rem;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 10px 32px rgba(180, 100, 130, 0.3);
+      background: #000;
+    }
+    .invite-video-wrap video {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: middle;
+      min-height: 200px;
+      background: #1a1018;
+    }
+    .video-missing {
+      display: none;
+      margin-top: 0.75rem;
+      padding: 1rem 1.1rem;
+      background: #fff0f5;
+      border: 1px dashed var(--pink-deep);
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .video-missing.visible {
+      display: block;
+    }
+    .video-missing strong {
+      color: var(--pink-deep);
+    }
+    .video-missing code {
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.25rem;
+      word-break: break-all;
+    }
+    /* Música de cuna */
+    .music-bar {
+      position: fixed;
+      bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+      right: max(1rem, env(safe-area-inset-right, 0px));
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+    .music-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 4px 18px rgba(180, 100, 130, 0.3);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    .music-toggle:active {
+      transform: scale(0.97);
+    }
+    .music-toggle.playing {
+      background: linear-gradient(135deg, #ffe8f2, #ffd6e8);
+      box-shadow: 0 4px 20px rgba(232, 90, 140, 0.35);
+    }
+    .music-toggle.unavailable {
+      opacity: 0.55;
+      cursor: default;
+    }
+    .music-hint {
+      max-width: 11.5rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.4rem 0.55rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      display: none;
+    }
+    .music-hint.visible {
+      display: block;
+    }
+    .confirm-section {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px dashed rgba(232, 90, 140, 0.35);
+      text-align: center;
+    }
+    .confirm-section p { margin-bottom: 0.75rem; font-size: 0.95rem; }
+    .btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .btn-wa {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-align: center;
+      color: #fff;
+    }
+    .btn-wa.yes { background: #25d366; }
+    .btn-wa.no { background: #8899a6; }
+    small.note {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      opacity: 0.75;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <audio id="lullabyAudio" loop preload="metadata" playsinline>
+    <source src="assets/musica-cuna.mp3" type="audio/mpeg" />
+    <source src="assets/musica-cuna.m4a" type="audio/mp4" />
+    <source src="assets/musica-cuna.ogg" type="audio/ogg" />
+  </audio>
+  <div class="music-bar">
+    <button type="button" class="music-toggle" id="musicToggle" aria-pressed="false" title="Música de cuna">
+      🎵 <span id="musicToggleLabel">Música</span>
+    </button>
+    <p class="music-hint" id="musicHint">
+      Añade un archivo <code>musica-cuna.mp3</code> en la carpeta <code>assets</code> (música con derechos permitidos para uso personal).
+    </p>
+  </div>
+
+  <!-- Pantalla 1: inicio + juego cascarón -->
+  <section id="screen-game" class="screen active">
+    <h1>¿Una invitación especial?</h1>
+    <div id="leyenda" class="leyenda">
+      Dos dragones han estado cuidando con amor un huevecito muy especial.<br />
+      Dentro de él, crece una pequeña vida llena de magia.<br /><br />
+      Muy pronto llegarás a nuestros brazos,<br />
+      y desde ahora ya te esperamos con todo el amor del mundo.
+    </div>
+    <p class="lead">Toca el cascarón varias veces hasta que se abra…</p>
+    <div class="game-area" id="gameArea">
+      <div class="egg-wrap" id="eggWrap" aria-label="Cascarón — tócalo para romperlo">
+        <div class="egg" id="egg"></div>
+      </div>
+      <div class="crack-layer" id="crackLayer" aria-hidden="true">
+        <svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 20 L48 45 L52 70 L46 95 L54 120" fill="none" stroke="#8b6914" stroke-width="1.2" opacity="0.6"/>
+          <path d="M35 55 L65 58 M38 78 L62 75" fill="none" stroke="#8b6914" stroke-width="1" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="scene" id="dragonScene">
+        <div class="kiss" id="kiss">💕</div>
+        <!-- Bebé dragón rosa (SVG) -->
+        <div class="baby-dragon" id="babyDragon" aria-hidden="true">
+          <img
+            class="dragon-img"
+            src="assets/dragon-bebe.png"
+            width="400"
+            height="440"
+            alt="Bebé dragón rosa"
+            decoding="async"
+          />
+        </div>
+        <!-- Dos dragones pequeños (besan al bebé) -->
+        <div class="mini left" id="dragonL">
+          <svg viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="40" cy="50" rx="28" ry="24" fill="#7ec8e3"/>
+            <ellipse cx="40" cy="38" rx="22" ry="20" fill="#9dd8ef"/>
+            <circle cx="34" cy="38" r="3" fill="#1a1a1a"/>
+            <circle cx="46" cy="38" r="3" fill="#1a1a1a"/>
+            <polygon points="40,12 34,4 46,4" fill="#6ab8d8"/>
+            <ellipse cx="40" cy="72" rx="10" ry="6" fill="#6ab8d8"/>
+          </svg>
+        </div>
+        <div class="mini right" id="dragonR">
+          <svg viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="40" cy="50" rx="28" ry="24" fill="#c9b8ff"/>
+            <ellipse cx="40" cy="38" rx="22" ry="20" fill="#ddd4ff"/>
+            <circle cx="34" cy="38" r="3" fill="#1a1a1a"/>
+            <circle cx="46" cy="38" r="3" fill="#1a1a1a"/>
+            <polygon points="40,12 34,4 46,4" fill="#a894f0"/>
+            <ellipse cx="40" cy="72" rx="10" ry="6" fill="#a894f0"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <p class="hint" id="tapHint">¡Toca el cascarón!</p>
+    <p class="post-hatch-msg" id="postHatchMsg">Ahora sí… ¡tu invitación en video!</p>
+    <button type="button" class="btn-main" id="btnToInvite">Ver la invitación</button>
+  </section>
+
+  <!-- Pantalla 2: invitación + confirmación WhatsApp -->
+  <section id="screen-invite" class="screen">
+    <div class="card">
+      <h2>Baby shower</h2>
+      <div class="invite-video-wrap" id="inviteVideoWrap">
+        <!-- El navegador usa el primer .mp4 que exista en assets/ (misma carpeta que este HTML). -->
+        <video id="inviteVideo" controls playsinline preload="metadata">
+          <source src="assets/invitacion.mp4" type="video/mp4" />
+          <source src="assets/tarjeta-invitacion.mp4" type="video/mp4" />
+          <source src="assets/Tarjeta de Invitación Baby Showe Rosa (1).mp4" type="video/mp4" />
+        </video>
+        <div id="videoMissing" class="video-missing" role="alert">
+          <strong>No se encontró el video.</strong> Copia tu archivo <code>.mp4</code> dentro de la carpeta
+          <code>assets</code> (junto a este HTML) y nómbralo, por ejemplo, <code>invitacion.mp4</code>.
+          Ruta completa típica:<br />
+          <code>C:\Users\Miria\CURSO\assets\invitacion.mp4</code>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.95rem;margin-bottom:0.5rem;">Confirma con un toque por WhatsApp 💕</p>
+      <div class="confirm-section">
+        <p>¿Nos acompañas?</p>
+        <div class="btn-row">
+          <a class="btn-wa yes" id="waYes" href="#" rel="noopener noreferrer">Sí, confirmo asistencia</a>
+          <a class="btn-wa no" id="waNo" href="#" rel="noopener noreferrer">No podré asistir</a>
+        </div>
+        <small class="note">Al tocar, se abre WhatsApp con el mensaje listo; solo pulsa «Enviar». El número está configurado abajo en el script (revísalo si no abre bien).</small>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      /** Número para WhatsApp: solo dígitos, con código de país (ej. Brasil 55 + DDD + número). Ajusta si hace falta. */
+      var WHATSAPP_E164 = "5512405946";
+
+      function waUrl(text) {
+        var enc = encodeURIComponent(text);
+        return "https://wa.me/" + WHATSAPP_E164 + "?text=" + enc;
+      }
+
+      var guestName = ""; // opcional: podrías pedir el nombre en un prompt
+      var eventTag = "Baby shower";
+
+      document.getElementById("waYes").href = waUrl(
+        "¡Hola! Confirmo mi asistencia al " + eventTag + ". " + (guestName ? "Soy " + guestName + ". " : "") + "¡Nos vemos!"
+      );
+      document.getElementById("waNo").href = waUrl(
+        "Hola, con mucho cariño les aviso que no podré asistir al " + eventTag + ". ¡Que sea un día hermoso!"
+      );
+
+      var taps = 0;
+      var broken = false;
+      var egg = document.getElementById("egg");
+      var eggWrap = document.getElementById("eggWrap");
+      var crackLayer = document.getElementById("crackLayer");
+      var tapHint = document.getElementById("tapHint");
+      var dragonScene = document.getElementById("dragonScene");
+      var babyDragon = document.getElementById("babyDragon");
+      var dragonL = document.getElementById("dragonL");
+      var dragonR = document.getElementById("dragonR");
+      var kiss = document.getElementById("kiss");
+      var leyenda = document.getElementById("leyenda");
+      var postHatchMsg = document.getElementById("postHatchMsg");
+      var btnToInvite = document.getElementById("btnToInvite");
+      var lullaby = document.getElementById("lullabyAudio");
+      var musicToggle = document.getElementById("musicToggle");
+      var musicToggleLabel = document.getElementById("musicToggleLabel");
+      var musicHint = document.getElementById("musicHint");
+      var lullabyTried = false;
+      var LULLABY_VOLUME = 0.32;
+
+      function setMusicUi(playing) {
+        if (!musicToggle || !musicToggleLabel) return;
+        musicToggle.classList.toggle("playing", !!playing);
+        musicToggle.setAttribute("aria-pressed", playing ? "true" : "false");
+        musicToggleLabel.textContent = playing ? "Pausar" : "Música";
+      }
+
+      function tryPlayLullaby() {
+        if (!lullaby || lullaby.dataset.unavailable === "1") return;
+        lullaby.volume = LULLABY_VOLUME;
+        var p = lullaby.play();
+        if (p && typeof p.then === "function") {
+          p.then(function () {
+            setMusicUi(true);
+          }).catch(function () {});
+        }
+      }
+
+      function toggleLullaby() {
+        if (!lullaby || lullaby.dataset.unavailable === "1") return;
+        if (lullaby.paused) {
+          tryPlayLullaby();
+        } else {
+          lullaby.pause();
+          setMusicUi(false);
+        }
+      }
+
+      if (lullaby) {
+        lullaby.addEventListener("playing", function () {
+          setMusicUi(true);
+        });
+        lullaby.addEventListener("pause", function () {
+          if (!lullaby.ended) setMusicUi(false);
+        });
+        lullaby.addEventListener("error", function () {
+          lullaby.dataset.unavailable = "1";
+          if (musicToggle) {
+            musicToggle.classList.add("unavailable");
+            musicToggle.classList.remove("playing");
+            musicToggle.setAttribute("aria-pressed", "false");
+          }
+          if (musicToggleLabel) musicToggleLabel.textContent = "Sin pista";
+          if (musicHint) musicHint.classList.add("visible");
+        });
+      }
+
+      if (musicToggle) {
+        musicToggle.addEventListener("click", function () {
+          if (lullaby && lullaby.dataset.unavailable === "1") return;
+          toggleLullaby();
+        });
+      }
+
+      var TAPS_TO_BREAK = 5;
+
+      function breakEgg() {
+        if (broken) return;
+        broken = true;
+        leyenda.classList.add("fade-out");
+        egg.classList.remove("shake");
+        eggWrap.classList.add("hidden");
+        crackLayer.classList.add("show");
+        tapHint.textContent = "¡Mirá!";
+        setTimeout(function () {
+          crackLayer.style.opacity = "0";
+          crackLayer.style.transition = "opacity 0.4s";
+        }, 400);
+        setTimeout(function () {
+          dragonScene.classList.add("visible");
+          babyDragon.classList.add("hatch");
+        }, 700);
+        setTimeout(function () {
+          dragonL.classList.add("arrive");
+          dragonR.classList.add("arrive");
+        }, 1600);
+        setTimeout(function () {
+          kiss.classList.add("show");
+        }, 2400);
+        setTimeout(function () {
+          postHatchMsg.classList.add("show");
+          btnToInvite.classList.add("show");
+          tapHint.style.display = "none";
+        }, 3200);
+      }
+
+      function onTap() {
+        if (broken) return;
+        if (!lullabyTried && lullaby && lullaby.dataset.unavailable !== "1") {
+          lullabyTried = true;
+          tryPlayLullaby();
+        }
+        taps++;
+        egg.classList.add("shake");
+        setTimeout(function () { egg.classList.remove("shake"); }, 400);
+        if (taps >= TAPS_TO_BREAK) breakEgg();
+        else tapHint.textContent = "¡Otra vez! (" + taps + "/" + TAPS_TO_BREAK + ")";
+      }
+
+      eggWrap.addEventListener("click", onTap);
+      eggWrap.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        onTap();
+      }, { passive: false });
+
+      function showVideoMissingIfBroken() {
+        var v = document.getElementById("inviteVideo");
+        var box = document.getElementById("videoMissing");
+        if (!v || !box) return;
+        if (v.error || v.networkState === 3) {
+          box.classList.add("visible");
+          return;
+        }
+        setTimeout(function () {
+          if (v.error || (v.networkState === 3 && v.readyState === 0)) {
+            box.classList.add("visible");
+          }
+        }, 400);
+      }
+
+      var inviteVideoEl = document.getElementById("inviteVideo");
+      if (inviteVideoEl) {
+        inviteVideoEl.addEventListener("error", function () {
+          var box = document.getElementById("videoMissing");
+          if (box) box.classList.add("visible");
+        });
+        inviteVideoEl.addEventListener("loadeddata", function () {
+          var box = document.getElementById("videoMissing");
+          if (box) box.classList.remove("visible");
+        });
+      }
+
+      btnToInvite.addEventListener("click", function () {
+        document.getElementById("screen-game").classList.remove("active");
+        document.getElementById("screen-invite").classList.add("active");
+        var v = document.getElementById("inviteVideo");
+        if (v) {
+          v.load();
+          v.play().catch(function () {});
+          showVideoMissingIfBroken();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
